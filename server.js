@@ -28,21 +28,23 @@ require('dotenv').config();
 // });
 
 const app = express();
-const allowedOrigins = [
-  /^https:\/\/3-dp-frontend.*\.vercel\.app$/, // all preview deploys
-  "http://localhost:3000"
-];
+// const allowedOrigins = [
+//   /^https:\/\/3-dp-frontend.*\.vercel\.app$/, // all preview deploys
+//   "http://localhost:3000"
+// ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // allow REST clients
-    if (allowedOrigins.some(o => o instanceof RegExp ? o.test(origin) : o === origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  }
-}));
+// app.use(cors({
+//   origin: function (origin, callback) {
+//     if (!origin) return callback(null, true); // allow REST clients
+//     if (allowedOrigins.some(o => o instanceof RegExp ? o.test(origin) : o === origin)) {
+//       callback(null, true);
+//     } else {
+//       callback(new Error("Not allowed by CORS"));
+//     }
+//   }
+// }));
+
+app.use(cors({ origin: "*" }));
 
 app.use(express.raw({ type: 'application/octet-stream', limit: '10mb' }));
 app.use(express.json({ limit: '1mb' }));
