@@ -28,7 +28,7 @@ require('dotenv').config();
 // });
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: "https://3-dp-frontend.vercel.app" }));
 app.use(express.raw({ type: 'application/octet-stream', limit: '10mb' }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ limit: '1mb', extended: true }));
