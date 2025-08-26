@@ -129,7 +129,7 @@ const authMiddleware = require('../middleware/auth');
       // 2️⃣ Email exists -> proceed with reset
       const { data: updateData, error: updateError } = await supabase.auth.resetPasswordForEmail(
       email.trim(),
-      { redirectTo: 'http://localhost:3000/update-password' }
+      { redirectTo: 'https://3-dp-frontend.vercel.app/update-password' }
     );
 
     if (updateError) {
