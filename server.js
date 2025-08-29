@@ -42,7 +42,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 // Explicit preflight handling is covered by the middleware below
-
+ 
 // Extra safety: ensure CORS headers are always present, including on errors
 app.use((req, res, next) => {
   const origin = req.headers.origin;
