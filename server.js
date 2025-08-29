@@ -30,35 +30,22 @@ require('dotenv').config();
 const app = express();
 const allowedOrigins = ["https://3dstl.netlify.app", "http://localhost:3000"];
 
-// CORS configuration to support credentials and proper preflight handling
-const corsOptions = {
-  origin: allowedOrigins,
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error("CORS not allowed by server"));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Filename'],
   exposedHeaders: ['Content-Disposition'],
-  optionsSuccessStatus: 204
-};
+}));
 
-app.use(cors(corsOptions));
-// Explicit preflight handling is covered by the middleware below
- 
-// Extra safety: ensure CORS headers are always present, including on errors
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Vary', 'Origin');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Filename');
-  }
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
-  next();
-});
-
+// Handle preflight requests globally
+app.options("*", cors());
 
 app.use(express.raw({ type: 'application/octet-stream', limit: '10mb' }));
 app.use(express.json({ limit: '1mb' }));
