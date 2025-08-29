@@ -10,7 +10,7 @@ const authMiddleware = require('../middleware/auth');
 
   router.post('/register',authMiddleware, async (req, res) => {
     const { email, password } = req.body;
-    const userId = req.userId;
+    const userId = req.id;
 
     try {
       const full_name = email.split('@')[0];
@@ -52,7 +52,7 @@ const authMiddleware = require('../middleware/auth');
   // Update Pwd
   router.post('/updatePwd', authMiddleware, async (req, res) => {
     const { email, password } = req.body;
-    const userId = req.userId;
+    const userId = req.id;
 
     try {
       // Login with Supabase Auth
@@ -100,7 +100,8 @@ const authMiddleware = require('../middleware/auth');
   // forgot Pwd
   router.post('/ForgotPwd', authMiddleware, async (req, res) => {
   const { email } = req.body;
-  const userId = req.userId;
+  
+  const userId = req.id;
 
   try {
     // 1️⃣ Check if the email exists in profiles table
@@ -195,7 +196,8 @@ const authMiddleware = require('../middleware/auth');
     try {
       const { email, token } = req.body;
       const userId =  jwt.decode(token)?.id;
-      
+      const uploadingDir = path.join(__dirname, "../uploads", userId);
+
       if (!email || !token) {
         logger.error("Email and token are required")
         loggerSupa('Logout.Error', 'Email and token are required', '', userId);
@@ -233,6 +235,22 @@ const authMiddleware = require('../middleware/auth');
       
       loggerSupa('Logout.Info', 'Logout successeful', '', userId);
       logger.info('Logout successful')
+      fs.readdir(uploadingDir, (err, files) => {
+        if (err) {
+          logger.error("Error reading uploads folder", err)
+          loggerSupa('UploadedSTL.Error', 'Error reading uploads folder', '', userId);
+          return;
+        }
+        fs.rm(uploadingDir,{ recursive: true, force: true }, (err) => {
+          if (err) {
+            logger.error("Error removing uploads folder:", err);
+            loggerSupa('UploadedSTL.Error', `Error removing uploads folder: ${err}`, '', userId);
+          } else {
+            logger.info("Uploads folder removed successfully.");
+            loggerSupa('UploadedSTL.Info', `Uploads folder removed successfully.`, '', userId);
+          }
+        })
+      });
       res.json({ message: 'Logout successful' });
     } catch (err) {
       logger.error(err.message)
@@ -243,10 +261,10 @@ const authMiddleware = require('../middleware/auth');
   
   router.post('/UploadedSTL', authMiddleware, async (req, res) => {
     const {cartItems, customer, token} = req.body; 
-    const Email = jwt.decode(token)?.email
-    const id = req.querjwt.decode(token)?.id;
-    const userId = req.userId;
-
+    const decoded = jwt.decode(token); 
+    const id = req.id;
+    const Email = decoded?.email;
+    console.log(id)
     try {  
       const createdAt = new Date().toISOString();
       const uploadingDir = path.join(__dirname, "../uploads", id);
@@ -257,7 +275,7 @@ const authMiddleware = require('../middleware/auth');
       
       if (insertError) {
         
-        loggerSupa('UploadedSTL.Error', insertError.message, '', userId);
+        loggerSupa('UploadedSTL.Error', insertError.message, '', id);
         logger.error(insertError.message);
         return res.status(400).json({ error: insertError.message })
       }
@@ -265,16 +283,16 @@ const authMiddleware = require('../middleware/auth');
           fs.readdir(uploadingDir, (err, files) => {
             if (err) {
               logger.error("Error reading uploads folder", err)
-              loggerSupa('UploadedSTL.Error', 'Error reading uploads folder', '', userId);
+              loggerSupa('UploadedSTL.Error', 'Error reading uploads folder', '', id);
               return;
             }
             fs.rm(uploadingDir,{ recursive: true, force: true }, (err) => {
               if (err) {
                 logger.error("Error removing uploads folder:", err);
-                loggerSupa('UploadedSTL.Error', `Error removing uploads folder: ${err}`, '', userId);
+                loggerSupa('UploadedSTL.Error', `Error removing uploads folder: ${err}`, '', id);
               } else {
                 logger.info("Uploads folder removed successfully.");
-                loggerSupa('UploadedSTL.Info', `Uploads folder removed successfully.`, '', userId);
+                loggerSupa('UploadedSTL.Info', `Uploads folder removed successfully.`, '', id);
               }
             })
           });
@@ -283,7 +301,7 @@ const authMiddleware = require('../middleware/auth');
         res.json({ success: true, message: 'Inserting uploaded stl files successfully' });
       } catch (err) {
         logger.error(err.message);
-        loggerSupa('UploadedSTL.Error', err.message, '', userId);
+        loggerSupa('UploadedSTL.Error', err.message, '', id);
       res.status(500).json({ success: false, error: err.message });
     }
   });

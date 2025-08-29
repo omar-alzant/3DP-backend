@@ -3,10 +3,10 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
-const ObjFileParser = require('obj-file-parser');
 const materialRoutes = require('./routes/materialRoutes');
 const AuthRoutes = require('./routes/AuthRoutes');
 const BenefitsRoutes = require('./routes/BenefitsRoutes');
+const HomeDetailsRoutes = require('./routes/HomeDetailsRoutes');
 const mailRoutes = require('./routes/mailRoutes');
 const authMiddleware = require('./middleware/auth');
 const loggerSupa = require("./config/loggerSupabase");
@@ -30,13 +30,7 @@ require('dotenv').config();
 const app = express();
 const allowedOrigins = ["https://3dstl.netlify.app", "http://localhost:3000"];
 
-const corsOptions = {
-  origin: "https://3dstl.netlify.app", 
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-};
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // handle preflight
+app.use(cors());
 
 
 app.use(express.raw({ type: 'application/octet-stream', limit: '10mb' }));
@@ -47,6 +41,7 @@ app.use('/admin/materials', materialRoutes);
 app.use('/supabase', AuthRoutes);
 
 app.use('/benefits', BenefitsRoutes);
+app.use('/Home', HomeDetailsRoutes);
 app.use('/mail', mailRoutes);
 // app.use('/Stripe', StripeRoutes);
 
@@ -57,7 +52,7 @@ const axios = require('axios');
 app.post('/threeDMaker',authMiddleware, async (req, res) => {
   const { prompt } = req.body;
   const headers = { Authorization: `Bearer ${process.env.MESHY_API_KEY}` };
-  const userId = req.userId;
+  const userId = req.id;
 
   try {
     // إرسال الطلب لإنشاء المهمة
@@ -88,7 +83,7 @@ app.post('/threeDMaker',authMiddleware, async (req, res) => {
 
 app.post('/threeDMaker/remesh', authMiddleware, async (req, res) => {
   const { TaskId } = req.body;
-  const userId = req.userId;
+  const userId = req.id;
   const headers = { Authorization: `Bearer ${process.env.MESHY_API_KEY}` };
   const payload = {
       input_task_id: TaskId,
@@ -121,7 +116,7 @@ app.post('/threeDMaker/remesh', authMiddleware, async (req, res) => {
 app.get('/threeDMaker/:taskId', authMiddleware, async (req, res) => {
   const { taskId } = req.params;
   const headers = { Authorization: `Bearer ${process.env.MESHY_API_KEY}` };
-  const userId = req.userId;
+  const userId = req.id;
 
   try {
     const { data } = await axios.get(
@@ -141,7 +136,7 @@ app.get('/threeDMaker/:taskId', authMiddleware, async (req, res) => {
 app.get('/threeDMaker/remesh/:taskId', authMiddleware, async (req, res) => {
   const { taskId } = req.params;
   const headers = { Authorization: `Bearer ${process.env.MESHY_API_KEY}` };
-  const userId = req.userId;
+  const userId = req.id;
 
   try {
     const { data } = await axios.get(
@@ -186,7 +181,7 @@ function extractCodeBetweenMarkers(content) {
 
 app.post('/openai', authMiddleware, async (req, res) => {
   const { prompt } = req.body;
-  const userId = req.userId;
+  const userId = req.id;
 
   try {
     const response = await openai.chat.completions.create({
@@ -295,94 +290,12 @@ function computeNormal(v1, v2, v3) {
   return { x: Nx / length, y: Ny / length, z: Nz / length };
 }
 
-const fsp = require('fs').promises;
-
-async function Obj2STL(objPath) {
-  try {
-    const objContent = await fsp.readFile(objPath, 'utf8'); // 🔄 Async file read
-    const objData = new ObjFileParser(objContent).parse();
-    const faces = objData.models[0].faces;
-    const vertices = objData.models[0].vertices;
-
-    let stl = 'solid obj\n';
-    for (const face of faces) {
-      const v1 = vertices[face.vertices[0].vertexIndex - 1];
-      const v2 = vertices[face.vertices[1].vertexIndex - 1];
-      const v3 = vertices[face.vertices[2].vertexIndex - 1];
-      const normal = computeNormal(v1, v2, v3);
-      stl += `  facet normal ${normal.x} ${normal.y} ${normal.z}
-    outer loop
-      vertex ${v1.x} ${v1.y} ${v1.z}
-      vertex ${v2.x} ${v2.y} ${v2.z}
-      vertex ${v3.x} ${v3.y} ${v3.z}
-    endloop
-  endfacet\n`;
-    }
-    stl += 'endsolid obj';
-
-    return stl;
-  } catch (err) {
-    console.error('Error reading or parsing OBJ file:', err);
-    throw err;
-  }
-}
-
-function parseOpenJSCADCode(code, { primitives, booleans, transforms }) {
-  const geometries = [];
-  
-  // Simple regex patterns for basic OpenJSCAD operations
-  const cubePattern = /cube\s*\(\s*\[?\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)\s*\]?\s*\)/g;
-  const cylinderPattern = /cylinder\s*\(\s*h\s*=\s*([0-9.]+)\s*,\s*r\s*=\s*([0-9.]+)\s*\)/g;
-  const spherePattern = /sphere\s*\(\s*r\s*=\s*([0-9.]+)\s*\)/g;
-  const simpleCubePattern = /cube\s*\(\s*([0-9.]+)\s*\)/g;
-  
-  let match;
-  
-  // Parse cubes with dimensions [x, y, z]
-  while ((match = cubePattern.exec(code)) !== null) {
-    const [_, x, y, z] = match;
-    // Use the largest dimension as the size for a cube
-    const size = Math.max(parseFloat(x), parseFloat(y), parseFloat(z));
-    const cube = primitives.cube({ size });
-    geometries.push(cube);
-  }
-  
-  // Parse simple cubes with single size
-  while ((match = simpleCubePattern.exec(code)) !== null) {
-    const [_, size] = match;
-    const cube = primitives.cube({ size: parseFloat(size) });
-    geometries.push(cube);
-  }
-  
-  // Parse cylinders
-  while ((match = cylinderPattern.exec(code)) !== null) {
-    const [_, h, r] = match;
-    const cylinder = primitives.cylinder({ height: parseFloat(h), radius: parseFloat(r) });
-    geometries.push(cylinder);
-  }
-  
-  // Parse spheres
-  while ((match = spherePattern.exec(code)) !== null) {
-    const [_, r] = match;
-    const sphere = primitives.sphere({ radius: parseFloat(r) });
-    geometries.push(sphere);
-  }
-  
-  // If no geometries found, create a default cube
-  if (geometries.length === 0) {
-    const defaultCube = primitives.cube({ size: 10 });
-    geometries.push(defaultCube);
-  }
-  
-  return geometries;
-}
-
 app.use('/files', express.static('uploads'));
 
 app.post('/upload', authMiddleware, async (req, res) => {
   let buffer = req.body;
   const id = req.query.id;
-  const userId = req.userId;
+  const userId = req.id;
   const filename = req.headers['x-filename'] || 'model.stl';
   // const filenameWithoutType = filename.substring(0, filename.lastIndexOf('.'));
 

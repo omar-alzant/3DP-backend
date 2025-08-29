@@ -9,9 +9,9 @@ router.get('/', authMiddleware, async (req, res) => {
   const { data, error } = await supabase
     .from('materials')
     .select('*');
-    const userId = req.userId;
+    const userId = req.id;
 
-  if (error) {
+    if (error) {
     loggerSupa(`Material.Error`, error.message, userId);  
     return res.status(400).json({ error: error.message });
   }
@@ -23,7 +23,7 @@ router.get('/', authMiddleware, async (req, res) => {
 router.post('/', authMiddleware, async (req, res) => {
   const { name, basePrice, description,  color, isNew, materialType, pricePerCm3  } = req.body;
   // console.log({ name, basePrice, description,  color, isNew, materialType, pricePerCm3  });
-  const userId = req.userId;
+  const userId = req.id;
 
   const { data, error } = await supabase
     .from('materials')
@@ -42,7 +42,7 @@ router.post('/', authMiddleware, async (req, res) => {
 router.put('/:id', authMiddleware, async (req, res) => {
   const { id } = req.params;
   const { name, basePrice, description, color, isNew, materialType, pricePerCm3 } = req.body;
-  const userId = req.userId;
+  const userId = req.id;
 
   const { data, error } = await supabase
     .from('materials')
@@ -69,7 +69,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
 // DELETE material
 router.delete('/:id', authMiddleware, async (req, res) => {
   const { id } = req.params;
-  const userId = req.userId;
+  const userId = req.id;
 
   const { error } = await supabase
     .from('materials')

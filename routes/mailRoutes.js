@@ -8,7 +8,7 @@ const loggerSupa = require("../config/loggerSupabase");
 
 router.post("/send-order", authMiddleware, async (req, res) => {
     const {cartItems, customer} = req.body; 
-    const userId = req.userId;
+    const userId = req.id;
 
     try {
         const transporter = nodemailer.createTransport({
