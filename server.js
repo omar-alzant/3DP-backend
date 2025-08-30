@@ -44,8 +44,14 @@ app.use(cors({
   exposedHeaders: ['Content-Disposition'],
 }));
 
-// Handle preflight requests globally
-app.options("*", cors());
+// Handle preflight requests for all routes without using wildcard
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    res.status(204).end();
+    return;
+  }
+  next();
+});
 
 app.use(express.raw({ type: 'application/octet-stream', limit: '10mb' }));
 app.use(express.json({ limit: '1mb' }));
@@ -351,5 +357,4 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
 
