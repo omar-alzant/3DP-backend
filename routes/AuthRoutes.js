@@ -183,6 +183,11 @@ const authMiddleware = require('../middleware/auth');
       { expiresIn: '24h' }
     );
     
+    await supabase
+    .from('profiles')
+    .update({ current_token: token })
+    .eq('id', loginData.user.id);
+
     loggerSupa('login.Info', 'Login successful!', '', loginData.user.id);
       res.json({ message: 'Login successful', token, user: loginData.user });
     } catch (err) {
