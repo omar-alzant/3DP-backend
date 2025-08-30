@@ -150,51 +150,66 @@ const authMiddleware = require('../middleware/auth');
     res.status(500).json({ error: err.message });
   }
 });
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
   
-  router.post('/login', async (req, res) => {
-    const { email, password } = req.body;
-    
-    try {
-      // Login with Supabase Auth
-      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-  
-      if (loginError) return res.status(400).json({ error: loginError.message });
-      const { data: profile, error } = await supabase
+  try {
+    // 1️⃣ تسجيل الدخول عبر Supabase
+    const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (loginError) return res.status(400).json({ error: loginError.message });
+
+    // 2️⃣ جلب بيانات البروفايل (مع current_token للتحقق)
+    const { data: profile, error } = await supabase
       .from('profiles')
-      .select('isAdmin')
+      .select('isAdmin, current_token')
       .eq('id', loginData.user.id)
-      .single(); // 👈 ensures one row instead of array
-    
+      .single();
+
     if (error) {
-      loggerSupa('login.Error', error.message, '', userId);
+      loggerSupa('login.Error', error.message, '', loginData.user.id);
       return res.status(400).json({ error: error.message });
     }
 
+    // 3️⃣ تحقق إذا كان هناك جلسة سابقة (token صالح) – منع تسجيل دخول متعدد
+    if (profile.current_token) {
+      try {
+        jwt.verify(profile.current_token, process.env.JWT_SECRET);
+        return res.status(403).json({ error: 'User is already logged in on another device.' });
+      } catch {
+        // Token منتهي الصلاحية → نسمح بإنشاء واحد جديد
+      }
+    }
+
+    // 4️⃣ إنشاء token جديد
     const token = jwt.sign(
       { 
         id: loginData.user.id, 
         email, 
-        isAdmin: profile.isAdmin // 👈 actual boolean
+        isAdmin: profile.isAdmin 
       }, 
       process.env.JWT_SECRET, 
       { expiresIn: '24h' }
     );
-    
+
+    // 5️⃣ تحديث current_token في قاعدة البيانات
     await supabase
-    .from('profiles')
-    .update({ current_token: token })
-    .eq('id', loginData.user.id);
+      .from('profiles')
+      .update({ current_token: token })
+      .eq('id', loginData.user.id);
 
     loggerSupa('login.Info', 'Login successful!', '', loginData.user.id);
-      res.json({ message: 'Login successful', token, user: loginData.user });
-    } catch (err) {
-      loggerSupa('Login.Error', err.message, '');
-      res.status(500).json({ error: err.message });
-    }
-  });
+    res.json({ message: 'Login successful', token, user: loginData.user });
+
+  } catch (err) {
+    loggerSupa('Login.Error', err.message, '');
+    res.status(500).json({ error: err.message });
+  }
+});
+
   
   
   router.post('/logout', async (req, res) => {
