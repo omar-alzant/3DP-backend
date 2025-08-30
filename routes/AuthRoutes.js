@@ -150,7 +150,8 @@ const authMiddleware = require('../middleware/auth');
     res.status(500).json({ error: err.message });
   }
 });
-router.post('/login', async (req, res) => {
+
+  router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   
   try {
@@ -210,8 +211,6 @@ router.post('/login', async (req, res) => {
   }
 });
 
-  
-  
   router.post('/logout', async (req, res) => {
     try {
       const { email, token } = req.body;
@@ -252,6 +251,11 @@ router.post('/login', async (req, res) => {
         loggerSupa('Logout.Error', err.message, '', userId);
         return res.status(400).json({ error: error.message });
       }
+
+      await supabase
+      .from('profiles')
+      .update({ current_token: null })
+      .eq('id', userId);
       
       loggerSupa('Logout.Info', 'Logout successeful', '', userId);
       logger.info('Logout successful')
