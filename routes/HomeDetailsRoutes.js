@@ -17,6 +17,7 @@ router.get('/', authMiddleware, async (req, res) => {
       loggerSupa(`Home.Error`, error.message, userId);    
       return res.status(400).json({ error: error.message });
     }
+
     loggerSupa(`Home.Info`, 'Get all Home done.', userId);  
     res.json(data);
   });

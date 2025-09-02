@@ -7,6 +7,7 @@ const path = require('path');
 const logger = require("../config/logger"); // import the logger
 const loggerSupa = require("../config/loggerSupabase"); // import the logger
 const authMiddleware = require('../middleware/auth');
+const fsP = require('fs/promises');
 
   router.post('/register',authMiddleware, async (req, res) => {
     const { email, password } = req.body;
@@ -149,7 +150,7 @@ const authMiddleware = require('../middleware/auth');
     
     res.status(500).json({ error: err.message });
   }
-});
+  });
 
   router.post('/login', async (req, res) => {
   const { email, password } = req.body;
@@ -195,11 +196,12 @@ const authMiddleware = require('../middleware/auth');
       process.env.JWT_SECRET, 
       { expiresIn: '24h' }
     );
+    const updatedAt = new Date().toISOString();  
 
     // 5️⃣ تحديث current_token في قاعدة البيانات
     await supabase
       .from('profiles')
-      .update({ current_token: token })
+      .update({ current_token: token, updated_at: updatedAt })
       .eq('id', loginData.user.id);
 
     loggerSupa('login.Info', 'Login successful!', '', loginData.user.id);
@@ -209,86 +211,67 @@ const authMiddleware = require('../middleware/auth');
     loggerSupa('Login.Error', err.message, '');
     res.status(500).json({ error: err.message });
   }
-});
+  });
 
   router.post('/logout', async (req, res) => {
     try {
       const { email, token } = req.body;
-      const userId =  jwt.decode(token)?.id;
+      const userId = jwt.decode(token)?.id;
       const uploadingDir = path.join(__dirname, "../uploads", userId);
 
       if (!email || !token) {
-        logger.error("Email and token are required")
+        logger.error("Email and token are required");
         loggerSupa('Logout.Error', 'Email and token are required', '', userId);
-        
         return res.status(400).json({ error: 'Email and token are required' });
       }
-      
-      // Verify the JWT token
-      let tokenEmail = "";
 
-      try {
-        tokenEmail = jwt.decode(token)?.email; // decode without verifying signature
-      } catch (err) {
-        loggerSupa('Logout.Error', 'Invalid token', '', userId);
-        logger.error("Invalid token")
-        
-        return res.status(400).json({ error: 'Invalid token' });
-      }
-      
-      // Check if the email in the token matches the email in request
+      const tokenEmail = jwt.decode(token)?.email;
       if (tokenEmail !== email) {
+        logger.error("Email does not match token");
         loggerSupa('Logout.Error', 'Email does not match token', '', userId);
-        logger.error("Email does not match token")
-        
         return res.status(401).json({ error: 'Email does not match token' });
       }
-      
-      // Proceed to logout
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        logger.error(err.message)
-        loggerSupa('Logout.Error', err.message, '', userId);
-        return res.status(400).json({ error: error.message });
+
+      const [signOutResult, updateResult] = await Promise.all([
+        supabase.auth.signOut(),
+        supabase.from('profiles').update({
+          current_token: null,
+          updated_at: new Date().toISOString()
+        }).eq('id', userId)
+      ]);
+
+      if (signOutResult.error) {
+        logger.error(signOutResult.error.message);
+        loggerSupa('Logout.Error', signOutResult.error.message, '', userId);
+        return res.status(400).json({ error: signOutResult.error.message });
       }
 
-      await supabase
-      .from('profiles')
-      .update({ current_token: null })
-      .eq('id', userId);
-      
-      loggerSupa('Logout.Info', 'Logout successeful', '', userId);
-      logger.info('Logout successful')
-      fs.readdir(uploadingDir, (err, files) => {
-        if (err) {
-          logger.error("Error reading uploads folder", err)
-          loggerSupa('UploadedSTL.Error', 'Error reading uploads folder', '', userId);
-          return;
-        }
-        fs.rm(uploadingDir,{ recursive: true, force: true }, (err) => {
-          if (err) {
-            logger.error("Error removing uploads folder:", err);
-            loggerSupa('UploadedSTL.Error', `Error removing uploads folder: ${err}`, '', userId);
-          } else {
-            logger.info("Uploads folder removed successfully.");
-            loggerSupa('UploadedSTL.Info', `Uploads folder removed successfully.`, '', userId);
-          }
-        })
-      });
+      try {
+        await fsP.rm(uploadingDir, { recursive: true, force: true });
+        logger.info("Uploads folder removed successfully.");
+        loggerSupa('UploadedSTL.Info', 'Uploads folder removed successfully.', '', userId);
+      } catch (err) {
+        logger.error("Error removing uploads folder:", err);
+        loggerSupa('UploadedSTL.Error', `Error removing uploads folder: ${err}`, '', userId);
+      }
+
+      logger.info('Logout successful');
+      loggerSupa('Logout.Info', 'Logout successful', '', userId);
       res.json({ message: 'Logout successful' });
+
     } catch (err) {
-      logger.error(err.message)
+      logger.error(err.message);
       loggerSupa('Logout.Error', err.message, '', userId);
       res.status(500).json({ error: err.message });
     }
   });
-  
+
   router.post('/UploadedSTL', authMiddleware, async (req, res) => {
     const {cartItems, customer, token} = req.body; 
     const decoded = jwt.decode(token); 
     const id = req.id;
     const Email = decoded?.email;
-    console.log(id)
+
     try {  
       const createdAt = new Date().toISOString();
       const uploadingDir = path.join(__dirname, "../uploads", id);

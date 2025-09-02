@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const supabase = require('../config/supabase');
 
 async function authMiddleware(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -7,22 +8,28 @@ async function authMiddleware(req, res, next) {
   if (!token) return res.status(401).json({ error: 'Access denied' });
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = jwt.decode(token)?.id;
 
-    // تحقق من المستخدم في قاعدة البيانات
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('current_token')
-      .eq('id', decoded.id)
-      .single();
+    const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('current_token') // just select minimal data
+    .eq('id', userId)
+    .single(); // we expect one row
 
-      if (error || !user) return res.status(401).json({ error: 'User not found' });
-
-      if (user.current_token !== token) {
-        return res.status(403).json({ error: 'Session expired or used on another device' });
+    if(profile.current_token){
+      try{
+        jwt.verify(token, process.env.JWT_SECRET);
+        if (profileError) return res.status(401).json({ error: 'User not found' });
+        if (profile.current_token.trim() !== token.trim()) {
+          return res.status(403).json({ error: 'Session expired or used on another device' });
+          }
+        }
+        catch(err){
+          return res.status(403).json({ error: 'Session expired or used on another device' });
+        }
       }
 
-    req.id = decoded.id; // attach userId to request
+    req.id = userId; // attach userId to request
     next();
   } catch (err) {
     return res.status(403).json({ error: 'Invalid token' });
