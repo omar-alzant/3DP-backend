@@ -9,7 +9,7 @@ const logger = require("../config/logger"); // import the logger
 const loggerSupa = require("../config/loggerSupabase"); // import the logger
 const authMiddleware = require('../middleware/auth');
 const fsP = require('fs/promises');
-const { Console } = require('console');
+const axios = require("axios");
 
   router.post('/register', async (req, res) => {
     const { email, password } = req.body;
