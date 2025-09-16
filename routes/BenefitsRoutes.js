@@ -13,6 +13,7 @@ router.get('/', authMiddleware, async (req, res) => {
       .from('Benefits')
       .select('*');
       const userId = req.id;
+      console.log(userId)
       if (error) {
       loggerSupa(`Benefits.Error`, error.message, userId);    
       return res.status(400).json({ error: error.message });

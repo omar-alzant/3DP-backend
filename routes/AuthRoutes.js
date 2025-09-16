@@ -1,3 +1,4 @@
+
 const express = require('express');
 const supabase = require('../config/supabase');
 const router = express.Router();
@@ -8,10 +9,10 @@ const logger = require("../config/logger"); // import the logger
 const loggerSupa = require("../config/loggerSupabase"); // import the logger
 const authMiddleware = require('../middleware/auth');
 const fsP = require('fs/promises');
+const { Console } = require('console');
 
-  router.post('/register',authMiddleware, async (req, res) => {
+  router.post('/register', async (req, res) => {
     const { email, password } = req.body;
-    const userId = req.id;
 
     try {
       const full_name = email.split('@')[0];
@@ -22,10 +23,10 @@ const fsP = require('fs/promises');
       });
       const avatar = "";
       const createdAt = new Date().toISOString();
-      
+      console.log(authError.message)
       if (authError) {
         logger.error(authError.message)
-        loggerSupa('register.Error', authError.message, '', userId);
+        // loggerSupa('register.Error', authError.message, '', userId);
         return res.status(400).json({ error: authError.message });
       }
       // 3. Add extra data in "profiles" table
@@ -35,17 +36,17 @@ const fsP = require('fs/promises');
       
       if (insertError) {
         logger.error(insertError.message)
-        loggerSupa('register.Error', insertError.message, '', userId);
+        // loggerSupa('register.Error', insertError.message, '', userId);
         return res.status(400).json({ error: insertError.message });
       }
       
       logger.info('User registered successfully');
-      loggerSupa('register.Info', 'User registered successfully', '', userId);
+      // loggerSupa('register.Info', 'User registered successfully', '', userId);
       
       res.json({ message: 'User registered successfully', user: authUser.user });
     } catch (err) {
       logger.error(err.message)
-      loggerSupa('register.Error', err.message, '', userId);
+      // loggerSupa('register.Error', err.message, '', userId);
       res.status(500).json({ error: err.message });
     }
   });
@@ -99,11 +100,9 @@ const fsP = require('fs/promises');
   });
   
   // forgot Pwd
-  router.post('/ForgotPwd', authMiddleware, async (req, res) => {
+  router.post('/ForgotPwd',  async (req, res) => {
   const { email } = req.body;
   
-  const userId = req.id;
-
   try {
     // 1️⃣ Check if the email exists in profiles table
     const { data: profileData, error: profileError } = await supabase
@@ -115,18 +114,15 @@ const fsP = require('fs/promises');
       
       if (profileError) {
         logger.error('ForgotPwd: Email Not Exist!')
-        loggerSupa('forgotPwd.Error', 'Email Not Exist!', '', userId);
         return res.status(400).json({ error: 'Email Not Exist!' });
       }
       
       if (profileData === '') {
         logger.error('ForgotPwd: No user found with this email')
-        loggerSupa('forgotPwd.Error', 'No user found with this email!', '', userId);
         return res.status(404).json({ error: 'No user found with this email' });
       }
       
       logger.info('ForgotPwd: Matched email');
-      loggerSupa('forgotPwd.Info', 'Matched email!', '', userId);
       
       // 2️⃣ Email exists -> proceed with reset
       const { data: updateData, error: updateError } = await supabase.auth.resetPasswordForEmail(
@@ -136,21 +132,55 @@ const fsP = require('fs/promises');
 
     if (updateError) {
       logger.error(updateError.message);
-      loggerSupa('forgotPwd.Error', updateError.message, '', userId);
 
       return res.status(400).json({ error: updateError.message });
     }
 
     logger.info('Reset email sent successfully');
-    loggerSupa('forgotPwd.Info', 'Reset email sent successfully!', '', userId);
     res.json({ message: 'Reset email sent', user: updateData });
   } catch (err) {
     logger.error(err.message);
-    loggerSupa('forgotPwd.Error', err.message, '', userId);
     
     res.status(500).json({ error: err.message });
   }
   });
+  router.post('/logoutAlldevices', async (req, res) => {
+    const { email, password, recaptchaToken } = req.body;
+  
+    try {
+      // Try signing in to verify credentials
+      const verify = await axios.post(
+        "https://www.google.com/recaptcha/api/siteverify",
+        null,
+        {
+          params: {
+            secret: process.env.RECAPTCHA_SECRET_KEY,
+            response: recaptchaToken,
+          },
+        }
+      );
+    
+      if (!verify.data.success) {
+        return res.status(400).json({ error: "فشل التحقق من reCAPTCHA" });
+      }
+    
+      
+      const updatedAt = new Date().toISOString();  
+
+      // 5️⃣ تحديث current_token في قاعدة البيانات
+      await supabase
+        .from('profiles')
+        .update({ current_token: null, updated_at: updatedAt })
+        .eq('email', email)
+        .single();
+    
+      res.json({ message: 'تم تسجيل الخروج من جميع الأجهزة' });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+    
 
   router.post('/login', async (req, res) => {
   const { email, password } = req.body;
