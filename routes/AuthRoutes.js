@@ -144,26 +144,20 @@ const axios = require("axios");
     res.status(500).json({ error: err.message });
   }
   });
+
   router.post('/logoutAlldevices', async (req, res) => {
-    const { email, password, recaptchaToken } = req.body;
-  
+    const { email, recaptchaToken } = req.body;
     try {
       // Try signing in to verify credentials
-      const verify = await axios.post(
-        "https://www.google.com/recaptcha/api/siteverify",
-        null,
-        {
-          params: {
-            secret: process.env.RECAPTCHA_SECRET_KEY,
-            response: recaptchaToken,
-          },
-        }
-      );
-    
-      if (!verify.data.success) {
-        return res.status(400).json({ error: "فشل التحقق من reCAPTCHA" });
-      }
-    
+    const response = await fetch(
+      `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`,
+      { method: "POST" }
+    );
+    const data = await response.json();
+
+    if (!data.success) {
+      return res.status(400).json({ error: "فشل التحقق من reCAPTCHA" });
+    }
       
       const updatedAt = new Date().toISOString();  
 
