@@ -21,6 +21,19 @@ async function authMiddleware(req, res, next) {
         jwt.verify(token, process.env.JWT_SECRET);
         if (profileError) return res.status(401).json({ error: 'User not found' });
         if (profile.current_token.trim() !== token.trim()) {
+          const [signOutResult, updateResult] = await Promise.all([
+            supabase.auth.signOut(),
+            supabase.from('profiles').update({
+              current_token: null,
+              updated_at: new Date().toISOString()
+            }).eq('id', userId)
+          ]);
+    
+          if (signOutResult.error) {
+            logger.error(signOutResult.error.message);
+            loggerSupa('Logout.Error', signOutResult.error.message, '', userId);
+            return res.status(400).json({ error: signOutResult.error.message });
+          }          
           return res.status(403).json({ error: 'Session expired or used on another device' });
           }
         }

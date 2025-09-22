@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
 const materialRoutes = require('./routes/materialRoutes');
+const ShopRoutes = require('./routes/ShopRoutes');
 const AuthRoutes = require('./routes/AuthRoutes');
 const BenefitsRoutes = require('./routes/BenefitsRoutes');
 const HomeDetailsRoutes = require('./routes/HomeDetailsRoutes');
@@ -58,6 +59,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ limit: '1mb', extended: true }));
 
 app.use('/admin/materials', materialRoutes);
+app.use('/admin/shop', ShopRoutes);
 app.use('/supabase', AuthRoutes);
 
 app.use('/benefits', BenefitsRoutes);
