@@ -7,19 +7,15 @@ const loggerSupa = require("../config/loggerSupabase");
 
 
 
-router.get('/', authMiddleware, async (req, res) => {
+router.get('/', async (req, res) => {
   
     const { data, error } = await supabase
       .from('Benefits')
       .select('*');
-      const userId = req.id;
-      console.log(userId)
       if (error) {
-      loggerSupa(`Benefits.Error`, error.message, userId);    
       return res.status(400).json({ error: error.message });
     }
 
-    loggerSupa(`Benefits.Info`, 'Get all benefits done.', userId);  
     res.json(data);
   });
   
