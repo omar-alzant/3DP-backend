@@ -344,7 +344,7 @@ app.post('/upload', authMiddleware, async (req, res) => {
   try {
     const volumeMm3 = measureVolume(geometry[0]);
     const volumeCm3 = volumeMm3 / 1000;
-    
+     
     // const price = (volumeCm3 * 0.10).toFixed(2);
     loggerSupa(`upload.Info`, `STL parsing Done!`, userId);
     res.json({ volume: volumeCm3.toFixed(2), fileName: filename});
