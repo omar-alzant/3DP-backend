@@ -7,18 +7,18 @@ const loggerSupa = require("../config/loggerSupabase");
 
 
 
-router.get('/', authMiddleware, async (req, res) => {
+router.get('/', async (req, res) => {
   
     const { data, error } = await supabase
       .from('Home')
       .select('*');
-      const userId = req.id;
+      // const userId = req.id;
       if (error) {
-      loggerSupa(`Home.Error`, error.message, userId);    
+      // loggerSupa(`Home.Error`, error.message, userId);    
       return res.status(400).json({ error: error.message });
     }
 
-    loggerSupa(`Home.Info`, 'Get all Home done.', userId);  
+    // loggerSupa(`Home.Info`, 'Get all Home done.', userId);  
     res.json(data);
   });
   

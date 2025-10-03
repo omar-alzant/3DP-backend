@@ -5,17 +5,17 @@ const authMiddleware = require('../middleware/auth');
 const loggerSupa = require("../config/loggerSupabase");
 
 // GET all materials
-router.get('/', authMiddleware, async (req, res) => {
+router.get('/', async (req, res) => {
   const { data, error } = await supabase
     .from('materials')
     .select('*');
-    const userId = req.id;
+    // const userId = req.id;
 
     if (error) {
-    loggerSupa(`Material.Error`, error.message, userId);  
+    // loggerSupa(`Material.Error`, error.message, userId);  
     return res.status(400).json({ error: error.message });
   }
-  loggerSupa(`Material.Info`, 'Get all materials successuly!', userId);  
+  // loggerSupa(`Material.Info`, 'Get all materials successuly!', userId);  
   res.json(data);
 });
 

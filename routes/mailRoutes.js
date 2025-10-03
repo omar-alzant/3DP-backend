@@ -6,9 +6,9 @@ const authMiddleware = require('../middleware/auth');
 const loggerSupa = require("../config/loggerSupabase");
 
 
-router.post("/send-order", async (req, res) => {
+router.post("/send-order", authMiddleware, async (req, res) => {
     const {cartItems, customer} = req.body; 
-    
+    const userId = req.id;
     try {
         const transporter = nodemailer.createTransport({
             service: "gmail",

@@ -7,20 +7,19 @@ const loggerSupa = require("../config/loggerSupabase");
 
 
 
-router.get('/', authMiddleware, async (req, res) => {
+router.get('/',  async (req, res) => {
   
     const { data, error } = await supabase
       .from('Shop')
       .select('*');
 
-      const userId = req.id;
-      console.log(userId)
+      // const userId = req.id;
+      // console.log(userId)
       if (error) {
-      loggerSupa(`Shop.Error`, error.message, userId);    
+      // loggerSupa(`Shop.Error`, error.message, userId);    
       return res.status(400).json({ error: error.message });
     }
-
-    loggerSupa(`Shop.Info`, 'Get all Shop done.', userId);  
+    // loggerSupa(`Shop.Info`, 'Get all Shop done.', userId);  
     res.json(data);
   });
   
