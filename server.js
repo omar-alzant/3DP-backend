@@ -54,9 +54,9 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.raw({ type: 'application/octet-stream', limit: '10mb' }));
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ limit: '1mb', extended: true }));
+app.use(express.raw({ type: 'application/octet-stream', limit: '100mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 app.use('/admin/materials', materialRoutes);
 app.use('/admin/shop', ShopRoutes);
@@ -354,6 +354,52 @@ app.post('/upload', authMiddleware, async (req, res) => {
     res.status(500).json({ error: "فشل حساب حجم STL" });
   }
 });
+
+
+
+
+
+
+
+// app.post('/upload', authMiddleware, async (req, res) => {
+//   const filename = req.headers['x-filename'] || 'file.stl';
+//   const id = req.query.id;
+//   const userId = req.id;
+
+//   const chunks = [];
+//   req.on('data', chunk => chunks.push(chunk));
+
+//   req.on('end', async () => {
+//     try {
+//       const buffer = Buffer.concat(chunks);
+//       const uploadingDir = path.join(__dirname, 'uploads', id);
+
+//       if (!fs.existsSync(uploadingDir)) {
+//         fs.mkdirSync(uploadingDir, { recursive: true });
+//       }
+
+//       const savePath = path.join(uploadingDir, filename);
+//       fs.writeFileSync(savePath, buffer);
+
+//       // 🔍 STL Analysis
+//       const { deserialize } = require('@jscad/stl-deserializer');
+//       const geometry = deserialize({ output: 'geometry', filename }, buffer);
+
+//       if (!geometry || geometry.length === 0) {
+//         return res.status(400).json({ error: "❌ ملف STL غير صالح أو فارغ" });
+//       }
+
+//       const volumeMm3 = measureVolume(geometry[0]);
+//       const volumeCm3 = volumeMm3 / 1000;
+
+//       res.json({ volume: volumeCm3.toFixed(2), fileName: filename });
+//     } catch (e) {
+//       console.error("❌ Error while processing STL:", e);
+//       res.status(500).json({ error: "فشل معالجة ملف STL" });
+//     }
+//   });
+// });
+
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
