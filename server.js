@@ -314,91 +314,75 @@ function computeNormal(v1, v2, v3) {
 
 app.use('/files', express.static('uploads'));
 
-app.post('/upload', authMiddleware, async (req, res) => {
-  let buffer = req.body;
-  const id = req.query.id;
-  const userId = req.id;
-  const filename = req.headers['x-filename'] || 'model.stl';
-  // const filenameWithoutType = filename.substring(0, filename.lastIndexOf('.'));
-
-  const uploadingDir = path.join("uploads", id); // نسبي فقط
-
-  if (!fs.existsSync(path.join(__dirname, uploadingDir))) {
-    fs.mkdirSync(path.join(__dirname, uploadingDir), { recursive: true });
-  }
-  
-  const savePath = path.join(__dirname, uploadingDir, filename);
-  fs.writeFileSync(savePath, buffer);
-  
-
-  const stlDeserializer = require('@jscad/stl-deserializer');
-  const rawData = fs.readFileSync(savePath);
-  const geometry = stlDeserializer.deserialize({ output: 'geometry', filename }, rawData);
-
-  if (!geometry || geometry.length === 0) {
-    loggerSupa(`upload.Error`, `❌ STL parsing resulted in empty objects!`, userId);
-    console.error("❌ STL parsing resulted in empty objects!");
-    return res.status(400).json({ error: "ملف STL غير صالح أو فارغ" });
-  }
-
-  try {
-    const volumeMm3 = measureVolume(geometry[0]);
-    const volumeCm3 = volumeMm3 / 1000;
-     
-    // const price = (volumeCm3 * 0.10).toFixed(2);
-    loggerSupa(`upload.Info`, `STL parsing Done!`, userId);
-    res.json({ volume: volumeCm3.toFixed(2), fileName: filename});
-  } catch (e) {
-    loggerSupa(`upload.Error`, `❌ Error while measuring volume`, userId);
-    console.error("❌ Error while measuring volume", e);
-    res.status(500).json({ error: "فشل حساب حجم STL" });
-  }
-});
-
-
-
-
-
-
-
 // app.post('/upload', authMiddleware, async (req, res) => {
-//   const filename = req.headers['x-filename'] || 'file.stl';
+//   let buffer = req.body;
 //   const id = req.query.id;
 //   const userId = req.id;
+//   const filename = req.headers['x-filename'] || 'model.stl';
+//   // const filenameWithoutType = filename.substring(0, filename.lastIndexOf('.'));
 
-//   const chunks = [];
-//   req.on('data', chunk => chunks.push(chunk));
+//   const uploadingDir = path.join("uploads", id); // نسبي فقط
 
-//   req.on('end', async () => {
-//     try {
-//       const buffer = Buffer.concat(chunks);
-//       const uploadingDir = path.join(__dirname, 'uploads', id);
+//   if (!fs.existsSync(path.join(__dirname, uploadingDir))) {
+//     fs.mkdirSync(path.join(__dirname, uploadingDir), { recursive: true });
+//   }
+  
+//   const savePath = path.join(__dirname, uploadingDir, filename);
+//   fs.writeFileSync(savePath, buffer);
+  
 
-//       if (!fs.existsSync(uploadingDir)) {
-//         fs.mkdirSync(uploadingDir, { recursive: true });
-//       }
+//   const stlDeserializer = require('@jscad/stl-deserializer');
+//   const rawData = fs.readFileSync(savePath);
+//   const geometry = stlDeserializer.deserialize({ output: 'geometry', filename }, rawData);
 
-//       const savePath = path.join(uploadingDir, filename);
-//       fs.writeFileSync(savePath, buffer);
+//   if (!geometry || geometry.length === 0) {
+//     loggerSupa(`upload.Error`, `❌ STL parsing resulted in empty objects!`, userId);
+//     console.error("❌ STL parsing resulted in empty objects!");
+//     return res.status(400).json({ error: "ملف STL غير صالح أو فارغ" });
+//   }
 
-//       // 🔍 STL Analysis
-//       const { deserialize } = require('@jscad/stl-deserializer');
-//       const geometry = deserialize({ output: 'geometry', filename }, buffer);
-
-//       if (!geometry || geometry.length === 0) {
-//         return res.status(400).json({ error: "❌ ملف STL غير صالح أو فارغ" });
-//       }
-
-//       const volumeMm3 = measureVolume(geometry[0]);
-//       const volumeCm3 = volumeMm3 / 1000;
-
-//       res.json({ volume: volumeCm3.toFixed(2), fileName: filename });
-//     } catch (e) {
-//       console.error("❌ Error while processing STL:", e);
-//       res.status(500).json({ error: "فشل معالجة ملف STL" });
-//     }
-//   });
+//   try {
+//     const volumeMm3 = measureVolume(geometry[0]);
+//     const volumeCm3 = volumeMm3 / 1000;
+     
+//     // const price = (volumeCm3 * 0.10).toFixed(2);
+//     loggerSupa(`upload.Info`, `STL parsing Done!`, userId);
+//     res.json({ volume: volumeCm3.toFixed(2), fileName: filename});
+//   } catch (e) {
+//     loggerSupa(`upload.Error`, `❌ Error while measuring volume`, userId);
+//     console.error("❌ Error while measuring volume", e);
+//     res.status(500).json({ error: "فشل حساب حجم STL" });
+//   }
 // });
+
+
+
+app.use('/uploadTest', express.raw({ type: 'application/octet-stream', limit: '50mb' }));
+
+
+app.post('/uploadTest', authMiddleware, async (req, res) => {
+  const filename = req.headers['x-filename'] || 'file.stl';
+  const id = req.query.id;
+
+  try {
+    const buffer = req.body; // already a Buffer now!
+
+    const { deserialize } = require('@jscad/stl-deserializer');
+    const geometry = deserialize({ output: 'geometry', filename }, buffer);
+
+    if (!geometry || geometry.length === 0) {
+      return res.status(400).json({ error: "❌ ملف STL غير صالح أو فارغ" });
+    }
+
+    const volumeMm3 = measureVolume(geometry[0]);
+    const volumeCm3 = volumeMm3 / 1000;
+
+    res.json({ volume: volumeCm3.toFixed(2), fileName: filename });
+  } catch (e) {
+    console.error("❌ Error while processing STL:", e);
+    res.status(500).json({ error: "فشل معالجة ملف STL" });
+  }
+});
 
 
 const PORT = process.env.PORT || 3001;
